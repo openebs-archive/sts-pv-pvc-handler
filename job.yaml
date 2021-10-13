@@ -1,0 +1,17 @@
+apiVersion: batch/v1 
+kind: Job 
+metadata:   
+  name: lister-sa-job   
+  labels:     
+    jobgroup: lister-sa 
+spec:   
+  template:     
+    metadata:       
+      name: lister-sa       
+      labels:         
+        jobgroup: lister-sa     
+    spec:       
+      containers:       
+      - name: c         
+        image: ksraj123/lister-sa:0.1.8             
+      restartPolicy: OnFailure
