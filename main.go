@@ -28,6 +28,7 @@ func main() {
 		fmt.Printf("error %s, creating clientset\n", err.Error())
 	}
 	ctx := context.Background()
+
 	pods, err := clientset.CoreV1().Pods("default").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		// handle error
@@ -35,14 +36,35 @@ func main() {
 	}
 	fmt.Println("Pods from default namespace")
 	for _, pod := range pods.Items {
-		fmt.Printf("%+v", pod)
+		fmt.Println(pod)
 	}
-	fmt.Println("Deployments are")
-	deployments, err := clientset.AppsV1().Deployments("default").List(ctx, metav1.ListOptions{})
-	if err != nil {
-		fmt.Printf("listing deployments %s\n", err.Error())
-	}
-	for _, d := range deployments.Items {
-		fmt.Printf("%s", d.Name)
-	}
+
+	// pvcs, err := clientset.CoreV1().PersistentVolumeClaims("default").List(ctx, metav1.ListOptions{})
+	// for _, pvc := range pvcs.Items {
+	// 	pvcdetails, err := clientset.CoreV1().PersistentVolumeClaims("default").Get(ctx, pvc.Name, metav1.GetOptions{})
+	// 	if err != nil {
+	// 		fmt.Println(err)
+	// 	} else {
+	// 		fmt.Println(pvcdetails.ManagedFields)
+	// 		fmt.Println(pvcdetails.OwnerReferences)
+	// 		fmt.Println(pvcdetails.ObjectMeta)
+	// 		fmt.Println(pvcdetails.Status)
+	// 		pvcdetails.eve
+	// 		fmt.Printf("\n")
+	// 		fmt.Printf("\n")
+	// 		fmt.Printf("\n")
+	// 		fmt.Printf("\n")
+	// 	}
+	// }
+
+	// fmt.Println(pvcs)
+
+	// fmt.Println("Deployments are")
+	// deployments, err := clientset.AppsV1().Deployments("default").List(ctx, metav1.ListOptions{})
+	// if err != nil {
+	// 	fmt.Printf("listing deployments %s\n", err.Error())
+	// }
+	// for _, d := range deployments.Items {
+	// 	fmt.Printf("%s", d.Name)
+	// }
 }
