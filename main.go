@@ -3,12 +3,20 @@ package main
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	v1 "k8s.io/api/core/v1"
+	// "k8s.io/kubernetes/pkg/controller/volume/ephemeral"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	// "k8s.io/kubernetes/pkg/controller/volume/common"
 )
+
+type OpenebsPvcStatus struct {
+	isDangling bool
+	labels     map[string]string
+}
 
 func main() {
 
@@ -30,7 +38,7 @@ func main() {
 	allPvcs, errPVC := clientset.CoreV1().PersistentVolumeClaims("default").List(ctx, metav1.ListOptions{})
 
 	if errPVC != nil {
-		fmt.Printf("error %s, getting PVCs\n", err.Error())
+		fmt.Printf("error %s, getting PVCs\n", errPVC.Error())
 	}
 
 	var openebsPvcs []*v1.PersistentVolumeClaim
@@ -51,9 +59,68 @@ func main() {
 	}
 
 	fmt.Println("Printing Filtered PVCs")
-	for _, openebsPVC := range openebsPvcs {
-		fmt.Println(openebsPVC.ObjectMeta.Name)
-		fmt.Println(openebsPVC.ObjectMeta.Labels)
+	for _, openebsPvc := range openebsPvcs {
+		fmt.Println(openebsPvc.ObjectMeta.Name)
+		fmt.Println(openebsPvc.ObjectMeta.Labels)
 	}
 
+	openebsPVCsStatus := make(map[string]OpenebsPvcStatus)
+
+	for _, openebsPvc := range openebsPvcs {
+		openebsPVCsStatus[openebsPvc.ObjectMeta.Name] = OpenebsPvcStatus{isDangling: true, labels: openebsPvc.ObjectMeta.Labels}
+	}
+
+	allStatefulsets, errAllSts := clientset.AppsV1().StatefulSets("default").List(ctx, metav1.ListOptions{})
+	if errAllSts != nil {
+		fmt.Printf("error %s, getting PVCs\n", errAllSts.Error())
+	}
+
+	// Objective - Get the pods under a statefulset
+	// Objective - Get what PVC a Pod is bound to
+	fmt.Println("Printing All Stateful Sets")
+	for _, statefulset := range allStatefulsets.Items {
+		labels := statefulset.Spec.Selector.MatchLabels
+		labelsKeys := reflect.ValueOf(labels).MapKeys()
+		key := labelsKeys[0].Interface().(string)
+		selector := key + "=" + labels[key]
+
+		fmt.Println(selector)
+
+		pods, err := clientset.CoreV1().Pods("default").List(ctx, metav1.ListOptions{LabelSelector: selector})
+
+		if err != nil {
+			fmt.Printf("error %s, getting PVCs\n", err.Error())
+		}
+
+		for _, pod := range pods.Items {
+			fmt.Println("Printing Pod ")
+			fmt.Println(pod.ObjectMeta.Name)
+			podVolumes := pod.Spec.Volumes
+
+			for _, volume := range podVolumes {
+				if volume.PersistentVolumeClaim != nil {
+					fmt.Println(volume.PersistentVolumeClaim.ClaimName)
+					entry, found := openebsPVCsStatus[volume.PersistentVolumeClaim.ClaimName]
+					if found {
+						entry.isDangling = false
+						openebsPVCsStatus[volume.PersistentVolumeClaim.ClaimName] = entry
+					}
+				}
+			}
+		}
+	}
+
+	for pvc, status := range openebsPVCsStatus {
+		if status.isDangling {
+			fmt.Println(pvc + " is dangling!")
+			err := clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, pvc, metav1.DeleteOptions{})
+
+			if err == nil {
+				fmt.Printf("Dangling PVC %s deleted successfully\n", pvc)
+			}
+		}
+	}
+
+	// fmt.Println("Printing Pod Pvc Index")
+	// fmt.Println(common.PodPVCIndex)
 }
