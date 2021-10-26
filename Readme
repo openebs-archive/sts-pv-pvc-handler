@@ -1,5 +1,0 @@
-kubectl create role poddepl --resource pods,deployments --verb list
-kubectl create rolebinding poddel --role poddel --serviceaccount default:default
-
-kubectl create role pvcs --resource persistentvolumeclaims --verb list
-kubectl create rolebinding pvcs --role pvcs --serviceaccount default:default

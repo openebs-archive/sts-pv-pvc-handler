@@ -11,7 +11,10 @@ spec:
       labels:         
         jobgroup: lister-sa     
     spec:       
-      containers:       
-      - name: c         
-        image: ksraj123/lister-sa:0.1.10             
-      restartPolicy: OnFailure
+      serviceAccountName: openebs-maya-operator
+      automountServiceAccountToken: true
+      containers:
+      - name: command-demo-container
+        image: lister-sa:0.1
+        imagePullPolicy: Never
+      restartPolicy: Never
