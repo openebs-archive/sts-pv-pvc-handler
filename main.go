@@ -36,6 +36,11 @@ func main() {
 	ctx := context.Background()
 
 	// To Do - Take selector env var to handle sts deletion
+	// To Do - use the labels selectors only for deletion use cases
+	// To Do - any pvc that maches the gives selectors and is not mounted is liable for deletion
+	// To Do - Ask the developer to put a pre-determine selector on every statefulset whose dangling pvcs are meant to be deleted
+	// To Do - Selector goes with delete and scale down and existing sts scale down
+	// To Do - Input - Provisioner Names Environment Variable, Storage class annotation to enable dandling pVC delete, Storage Class Parameter with Label Selector - would be provided through storage class parameters
 
 	openEbsStorageClasses := getProspectiveStorageClasses(clientset, ctx)
 	if len(openEbsStorageClasses) == 0 {
@@ -156,8 +161,10 @@ func getProspectiveStorageClasses(clientset *kubernetes.Clientset, ctx context.C
 	var openEbsStorageClasses []StorageV1.StorageClass
 
 	for _, storageclass := range allSc.Items {
+		if storageclass.Annotations["openebs.io/delete-dangling-pvc"] != "true" {
+			continue
+		}
 		for _, openEbsProvisioner := range provisioners {
-			// TODO - Add Check for annotation as well here
 			if storageclass.Provisioner == openEbsProvisioner {
 				openEbsStorageClasses = append(openEbsStorageClasses, storageclass)
 			}

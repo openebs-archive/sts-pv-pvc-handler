@@ -41,8 +41,6 @@ spec:
            - mongod
            - "--replSet"
            - rs0
-           - "--smallfiles"
-           - "--noprealloc"
            - "--bind_ip_all"
          ports:
            - containerPort: 27017
@@ -58,7 +56,7 @@ spec:
  - metadata:
      name: mongo-persistent-storage
    spec:
-     storageClassName: mongo-pv-az
+     storageClassName: openebs-hostpath
      accessModes:
        - ReadWriteOnce
      resources:
