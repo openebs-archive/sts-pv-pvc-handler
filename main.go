@@ -161,11 +161,8 @@ func getProspectiveStorageClasses(clientset *kubernetes.Clientset, ctx context.C
 	var openEbsStorageClasses []StorageV1.StorageClass
 
 	for _, storageclass := range allSc.Items {
-		if storageclass.Annotations["openebs.io/delete-dangling-pvc"] != "true" {
-			continue
-		}
 		for _, openEbsProvisioner := range provisioners {
-			if storageclass.Provisioner == openEbsProvisioner {
+			if storageclass.Provisioner == openEbsProvisioner && storageclass.Annotations["openebs.io/delete-dangling-pvc"] != "true" {
 				openEbsStorageClasses = append(openEbsStorageClasses, storageclass)
 			}
 		}
