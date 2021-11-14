@@ -42,24 +42,49 @@ func main() {
 	// To Do - Selector goes with delete and scale down and existing sts scale down
 	// To Do - Input - Provisioner Names Environment Variable, Storage class annotation to enable dandling pVC delete, Storage Class Parameter with Label Selector - would be provided through storage class parameters
 
+	openEbsStorageClassesMap := make(map[string]StorageV1.StorageClass)
 	openEbsStorageClasses := getProspectiveStorageClasses(clientset, ctx)
 	if len(openEbsStorageClasses) == 0 {
 		panic("No Valid Storage Classes Found")
 	}
-
-	openebsPVCsStatus := make(map[string]OpenebsPvcStatus)
+	for _, storageclass := range openEbsStorageClasses {
+		openEbsStorageClassesMap[storageclass.Name] = storageclass
+		fmt.Println(fmt.Sprintf("OpenEBS storage class with annotation = %v", storageclass.Name))
+	}
 
 	// To Ask - A PVC might have the right storage class and annotation but is could be dangling only if it was created dynamically
 	openebsPvcs := getOpenEbsPVCs(clientset, ctx, openEbsStorageClasses)
+	statefulsetPvcs := getStatefulSetPVCs(clientset, ctx, openebsPvcs, openEbsStorageClassesMap)
+	for _, pvc := range statefulsetPvcs {
+		fmt.Println(pvc.Name)
+	}
+
+	openebsPVCsStatus := getAllUnboundedPVCs(clientset, ctx, statefulsetPvcs)
+
+	for pvc, status := range openebsPVCsStatus {
+		if status.isDangling {
+			fmt.Println(pvc + " is dangling!")
+			/*
+				err := clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, pvc, metav1.DeleteOptions{})
+
+				if err == nil {
+					fmt.Printf("Dangling PVC %s deleted successfully\n", pvc)
+				}
+			*/
+		}
+	}
+}
+
+func getAllUnboundedPVCs(clientset *kubernetes.Clientset, ctx context.Context, statefulsetPvcs []v1.PersistentVolumeClaim) map[string]OpenebsPvcStatus {
 
 	allStatefulsets := getAllStatefulSets(clientset, ctx)
+	openebsPVCsStatus := make(map[string]OpenebsPvcStatus)
 
-	prospectivePvcs := getProspectivePVCs(clientset, ctx, openebsPvcs, allStatefulsets)
-
-	for _, openebsPvc := range prospectivePvcs {
+	for _, openebsPvc := range statefulsetPvcs {
 		openebsPVCsStatus[openebsPvc.ObjectMeta.Name] = OpenebsPvcStatus{isDangling: true, labels: openebsPvc.ObjectMeta.Labels}
 	}
 
+	// iterate over all pods in all statefulsets and mark the pvc they are bound to
 	for _, statefulset := range allStatefulsets {
 		labels := statefulset.Spec.Selector.MatchLabels
 		labelsKeys := reflect.ValueOf(labels).MapKeys()
@@ -86,35 +111,21 @@ func main() {
 			}
 		}
 	}
-
-	for pvc, status := range openebsPVCsStatus {
-		if status.isDangling {
-			fmt.Println(pvc + " is dangling!")
-			/*
-				err := clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, pvc, metav1.DeleteOptions{})
-
-				if err == nil {
-					fmt.Printf("Dangling PVC %s deleted successfully\n", pvc)
-				}
-			*/
-		}
-	}
+	return openebsPVCsStatus
 }
 
-// Gets dynamically created PVCs from list of OpenEBS PVCs with annotation provided
-func getProspectivePVCs(clientset *kubernetes.Clientset, ctx context.Context, pvcs []v1.PersistentVolumeClaim, statefulsets []AppsV1.StatefulSet) []v1.PersistentVolumeClaim {
-	// Dynamic PVCs have the same label as their stateful set
-	var dynamicPvcs []v1.PersistentVolumeClaim
+// Gets statefulset PVCs from list of OpenEBS PVCs with annotation provided
+func getStatefulSetPVCs(clientset *kubernetes.Clientset, ctx context.Context, pvcs []v1.PersistentVolumeClaim, openEbsStorageClassesMap map[string]StorageV1.StorageClass) []v1.PersistentVolumeClaim {
+	var statefulsetPvcs []v1.PersistentVolumeClaim
 	for _, pvc := range pvcs {
-		// To Ask - Do PVCs take all the labels of their Stateful Set or only a few?
-		// To Ask - What if the entire stateful set is deleted?, we would have PVCs with labels but how would we know it was greated dynamically
-		for _, statefulset := range statefulsets {
-			if reflect.DeepEqual(statefulset.Spec.Selector.MatchLabels, pvc.Labels) {
-				dynamicPvcs = append(dynamicPvcs, pvc)
+		statefulsetPvcSelector := openEbsStorageClassesMap[*pvc.Spec.StorageClassName].Parameters["sts-pvc-selector"]
+		for key, value := range pvc.Labels {
+			if key == "sts-pvc-selector" && value == statefulsetPvcSelector {
+				statefulsetPvcs = append(statefulsetPvcs, pvc)
 			}
 		}
 	}
-	return dynamicPvcs
+	return statefulsetPvcs
 }
 
 func getAllStatefulSets(clientset *kubernetes.Clientset, ctx context.Context) []AppsV1.StatefulSet {
@@ -162,7 +173,7 @@ func getProspectiveStorageClasses(clientset *kubernetes.Clientset, ctx context.C
 
 	for _, storageclass := range allSc.Items {
 		for _, openEbsProvisioner := range provisioners {
-			if storageclass.Provisioner == openEbsProvisioner && storageclass.Annotations["openebs.io/delete-dangling-pvc"] != "true" {
+			if storageclass.Provisioner == openEbsProvisioner && storageclass.Annotations["openebs.io/delete-dangling-pvc"] == "true" {
 				openEbsStorageClasses = append(openEbsStorageClasses, storageclass)
 			}
 		}
