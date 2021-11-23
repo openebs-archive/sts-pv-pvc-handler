@@ -19,7 +19,7 @@ type OpenebsPvcStatus struct {
 
 func GetAllUnboundedPVCs(clientset *kubernetes.Clientset, ctx context.Context, statefulsetPvcs []v1.PersistentVolumeClaim) map[string]OpenebsPvcStatus {
 
-	allStatefulsets := listers.ListAllStatefulSets(clientset, ctx)
+	allStatefulsets := listers.ListAllStatefulSets(clientset, ctx, "default")
 	openebsPVCsStatus := make(map[string]OpenebsPvcStatus)
 
 	for _, openebsPvc := range statefulsetPvcs {
@@ -57,7 +57,7 @@ func GetAllUnboundedPVCs(clientset *kubernetes.Clientset, ctx context.Context, s
 }
 
 // Gets statefulset PVCs from list of OpenEBS PVCs with annotation provided
-func GetStatefulSetPVCs(clientset *kubernetes.Clientset, ctx context.Context, pvcs []v1.PersistentVolumeClaim, openEbsStorageClassesMap map[string]StorageV1.StorageClass) []v1.PersistentVolumeClaim {
+func GetStatefulSetPVCs(clientset *kubernetes.Clientset, ctx context.Context, pvcs []v1.PersistentVolumeClaim, openEbsStorageClassesMap map[string]*StorageV1.StorageClass) []v1.PersistentVolumeClaim {
 	var statefulsetPvcs []v1.PersistentVolumeClaim
 	for _, pvc := range pvcs {
 		statefulsetPvcSelector := openEbsStorageClassesMap[*pvc.Spec.StorageClassName].Parameters["sts-pvc-selector"]

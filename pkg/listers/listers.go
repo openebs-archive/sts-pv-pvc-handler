@@ -11,8 +11,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func ListAllStatefulSets(clientset *kubernetes.Clientset, ctx context.Context) []AppsV1.StatefulSet {
-	allStatefulsets, errAllSts := clientset.AppsV1().StatefulSets("default").List(ctx, metav1.ListOptions{})
+func ListAllStatefulSets(clientset *kubernetes.Clientset, ctx context.Context, namespace string) []AppsV1.StatefulSet {
+	allStatefulsets, errAllSts := clientset.AppsV1().StatefulSets(namespace).List(ctx, metav1.ListOptions{})
 	if errAllSts != nil {
 		fmt.Printf("error %s, getting PVCs\n", errAllSts.Error())
 	}
@@ -27,16 +27,16 @@ func ListAllStorageClasses(clientset *kubernetes.Clientset, ctx context.Context)
 	return allSc.Items
 }
 
-func ListAllPersistentVolumeClaims(clientset *kubernetes.Clientset, ctx context.Context) []v1.PersistentVolumeClaim {
-	allPvcs, errPVC := clientset.CoreV1().PersistentVolumeClaims("default").List(ctx, metav1.ListOptions{})
+func ListAllPersistentVolumeClaims(clientset *kubernetes.Clientset, ctx context.Context, namespace string) []v1.PersistentVolumeClaim {
+	allPvcs, errPVC := clientset.CoreV1().PersistentVolumeClaims(namespace).List(ctx, metav1.ListOptions{})
 	if errPVC != nil {
 		fmt.Printf("error %s, getting PVCs\n", errPVC.Error())
 	}
 	return allPvcs.Items
 }
 
-func ListPVCsOfStorageClass(clientset *kubernetes.Clientset, ctx context.Context, storageclasses []StorageV1.StorageClass) []v1.PersistentVolumeClaim {
-	allPvcs := ListAllPersistentVolumeClaims(clientset, ctx)
+func ListPVCsOfStorageClass(clientset *kubernetes.Clientset, ctx context.Context, namespace string, storageclasses []*StorageV1.StorageClass) []v1.PersistentVolumeClaim {
+	allPvcs := ListAllPersistentVolumeClaims(clientset, ctx, namespace)
 	var openebsPvcs []v1.PersistentVolumeClaim
 	for _, pvc := range allPvcs {
 		pvcStorageClassName := *pvc.Spec.StorageClassName
@@ -51,13 +51,13 @@ func ListPVCsOfStorageClass(clientset *kubernetes.Clientset, ctx context.Context
 }
 
 // retuns list of storage classes that have an provisioner among the provided provisioners and have the annotation set
-func ListProvisionerStorageClassesWithAnnotation(clientset *kubernetes.Clientset, ctx context.Context, provisioners []string, annotation string) []StorageV1.StorageClass {
+func ListProvisionerStorageClassesWithAnnotation(clientset *kubernetes.Clientset, ctx context.Context, provisioners []string, annotation string) []*StorageV1.StorageClass {
 	allSc := ListAllStorageClasses(clientset, ctx)
-	var openEbsStorageClasses []StorageV1.StorageClass
+	var openEbsStorageClasses []*StorageV1.StorageClass
 	for _, storageclass := range allSc {
 		for _, openEbsProvisioner := range provisioners {
 			if storageclass.Provisioner == openEbsProvisioner && storageclass.Annotations[annotation] == "true" {
-				openEbsStorageClasses = append(openEbsStorageClasses, storageclass)
+				openEbsStorageClasses = append(openEbsStorageClasses, &storageclass)
 			}
 		}
 	}
