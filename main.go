@@ -37,7 +37,7 @@ func init() {
 }
 
 func main() {
-	openEbsStorageClassesMap := make(map[string]StorageV1.StorageClass)
+	openEbsStorageClassesMap := make(map[string]*StorageV1.StorageClass)
 	provisioners := utils.EnvVarSlice(PROVISIONERS_ENV_VAR)
 	openEbsStorageClasses := listers.ListProvisionerStorageClassesWithAnnotation(clientset, ctx, provisioners, STORAGE_CLASS_ANNOTATION)
 
@@ -49,7 +49,7 @@ func main() {
 		openEbsStorageClassesMap[storageclass.Name] = storageclass
 		fmt.Println(fmt.Sprintf("OpenEBS storage class with annotation = %v", storageclass.Name))
 	}
-	openebsPvcs := listers.ListPVCsOfStorageClass(clientset, ctx, openEbsStorageClasses)
+	openebsPvcs := listers.ListPVCsOfStorageClass(clientset, ctx, "default", openEbsStorageClasses)
 	statefulsetPvcs := executor.GetStatefulSetPVCs(clientset, ctx, openebsPvcs, openEbsStorageClassesMap)
 	for _, pvc := range statefulsetPvcs {
 		fmt.Println(pvc.Name)
