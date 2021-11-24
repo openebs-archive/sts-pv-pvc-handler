@@ -3,57 +3,47 @@ package executor
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/ksraj123/lister-sa/pkg/listers"
 	v1 "k8s.io/api/core/v1"
 	StorageV1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 )
 
-type OpenebsPvcStatus struct {
-	IsDangling bool
-	Labels     map[string]string
-}
+// Takes in Statefulset PVCs of deletion allowed storage classes as argument and returns a map containing dangling status of given PVCs.
+func GetPVCDanlingStatusMap(clientset *kubernetes.Clientset, ctx context.Context, namespace string, statefulsetPvcs []v1.PersistentVolumeClaim) map[string]bool {
 
-func GetAllUnboundedPVCs(clientset *kubernetes.Clientset, ctx context.Context, statefulsetPvcs []v1.PersistentVolumeClaim) map[string]OpenebsPvcStatus {
+	allStatefulsets := listers.ListAllStatefulSets(clientset, ctx, namespace)
+	pvcDanglingStatusList := make(map[string]bool)
 
-	allStatefulsets := listers.ListAllStatefulSets(clientset, ctx, "default")
-	openebsPVCsStatus := make(map[string]OpenebsPvcStatus)
-
+	// initally mark all openebs statefulset pvcs as dangling
 	for _, openebsPvc := range statefulsetPvcs {
-		openebsPVCsStatus[openebsPvc.ObjectMeta.Name] = OpenebsPvcStatus{IsDangling: true, Labels: openebsPvc.ObjectMeta.Labels}
+		pvcDanglingStatusList[openebsPvc.ObjectMeta.Name] = true
 	}
 
-	// iterate over all pods in all statefulsets and mark the pvc they are bound to
+	// iterate over all pods in all statefulsets and mark the pvc they are bound to as not dagling
 	for _, statefulset := range allStatefulsets {
-		labels := statefulset.Spec.Selector.MatchLabels
-		labelsKeys := reflect.ValueOf(labels).MapKeys()
-		key := labelsKeys[0].Interface().(string)
-		selector := key + "=" + labels[key]
+		statefulsetLabels := statefulset.Spec.Selector.MatchLabels
+		labelSelectorString := labels.SelectorFromSet(statefulsetLabels).String()
 
-		pods, err := clientset.CoreV1().Pods("default").List(ctx, metav1.ListOptions{LabelSelector: selector})
-
+		// ToDo: Maybe this should be moved into listers
+		pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelectorString})
 		if err != nil {
-			fmt.Printf("error %s, getting PVCs\n", err.Error())
+			fmt.Printf("Could not get Pods of label %v in namespace %v, Error = %v\n", labelSelectorString, namespace, err.Error())
 		}
 
 		for _, pod := range pods.Items {
 			podVolumes := pod.Spec.Volumes
-
 			for _, volume := range podVolumes {
 				if volume.PersistentVolumeClaim != nil {
-					entry, found := openebsPVCsStatus[volume.PersistentVolumeClaim.ClaimName]
-					if found {
-						entry.IsDangling = false
-						openebsPVCsStatus[volume.PersistentVolumeClaim.ClaimName] = entry
-					}
+					pvcDanglingStatusList[volume.PersistentVolumeClaim.ClaimName] = false
 				}
 			}
 		}
 	}
-	return openebsPVCsStatus
+	return pvcDanglingStatusList
 }
 
 // Gets statefulset PVCs from list of OpenEBS PVCs with annotation provided
@@ -70,17 +60,16 @@ func GetStatefulSetPVCs(clientset *kubernetes.Clientset, ctx context.Context, pv
 	return statefulsetPvcs
 }
 
-func DeleteDanglingPVCs(openebsPVCsStatus map[string]OpenebsPvcStatus) {
-	for pvc, status := range openebsPVCsStatus {
-		if status.IsDangling {
-			fmt.Println(pvc + " is dangling!")
-			/*
-				err := clientset.CoreV1().PersistentVolumeClaims("default").Delete(ctx, pvc, metav1.DeleteOptions{})
-
-				if err == nil {
-					fmt.Printf("Dangling PVC %s deleted successfully\n", pvc)
-				}
-			*/
+func DeleteDanglingPVCs(clientset *kubernetes.Clientset, ctx context.Context, namespace string, openebsPVCsStatus map[string]bool) {
+	for pvcName, isDangling := range openebsPVCsStatus {
+		if isDangling {
+			fmt.Println(pvcName + " is dangling!")
+			err := clientset.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
+			if err == nil {
+				fmt.Printf("Dangling PVC %v in namesapce %v deleted successfully\n", pvcName, namespace)
+			} else {
+				panic(fmt.Sprintf("Error while deleting danling PVC %v in namespace %v", pvcName, namespace))
+			}
 		}
 	}
 }

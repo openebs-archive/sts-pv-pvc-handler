@@ -7,10 +7,10 @@ import (
 )
 
 func EnvVarSlice(envVarName string) []string {
-	provisionersEnvVar, exists := os.LookupEnv(envVarName)
+	envVar, exists := os.LookupEnv(envVarName)
 	if !exists {
 		panic(fmt.Sprintf("Environment Variable %v not found", envVarName))
 	}
-	provisioners := strings.Split(provisionersEnvVar, ",")
-	return provisioners
+	slice := strings.Split(envVar, ",")
+	return slice
 }

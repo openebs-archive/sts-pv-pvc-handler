@@ -20,6 +20,7 @@ var (
 )
 
 const (
+	NAMESPACES_ENV_VAR       = "NAMESPACES"
 	PROVISIONERS_ENV_VAR     = "PROVISIONERS"
 	STORAGE_CLASS_ANNOTATION = "openebs.io/delete-dangling-pvc"
 )
@@ -37,6 +38,8 @@ func init() {
 }
 
 func main() {
+	namespaces := utils.EnvVarSlice(NAMESPACES_ENV_VAR)
+
 	openEbsStorageClassesMap := make(map[string]*StorageV1.StorageClass)
 	provisioners := utils.EnvVarSlice(PROVISIONERS_ENV_VAR)
 	openEbsStorageClasses := listers.ListProvisionerStorageClassesWithAnnotation(clientset, ctx, provisioners, STORAGE_CLASS_ANNOTATION)
@@ -55,6 +58,6 @@ func main() {
 		fmt.Println(pvc.Name)
 	}
 
-	openebsPVCsStatus := executor.GetAllUnboundedPVCs(clientset, ctx, statefulsetPvcs)
-	executor.DeleteDanglingPVCs(openebsPVCsStatus)
+	openebsPVCsStatus := executor.GetPVCDanlingStatusMap(clientset, ctx, "default", statefulsetPvcs)
+	executor.DeleteDanglingPVCs(clientset, ctx, "default", openebsPVCsStatus)
 }

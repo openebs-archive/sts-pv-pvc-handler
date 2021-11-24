@@ -39,7 +39,9 @@ func TestListAllStatefulSets(t *testing.T) {
 	ctx := context.Background()
 	clientSet, clusterTestEnv := startCluster()
 	defer stopCluster(clusterTestEnv)
-	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), TEST_NAMESPACE, 1, map[string]string{"role": "test"})
+
+	replicas := 1
+	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), TEST_NAMESPACE, int32(replicas), map[string]string{"role": "test"}, "standard")
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -75,6 +77,12 @@ func TestListAllStatefulSets(t *testing.T) {
 	err := clientSet.AppsV1().StatefulSets(TEST_NAMESPACE).Delete(ctx, statefulset.Name, metav1.DeleteOptions{})
 	if err != nil {
 		panic(err.Error())
+	}
+	for i := 0; i < replicas; i++ {
+		err := clientSet.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 }
 

@@ -8,7 +8,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GenerateStatefulSet(name string, namespace string, replicas int32, selector map[string]string) *AppsV1.StatefulSet {
+func GenerateStatefulSet(name string, namespace string, replicas int32, selector map[string]string, storageClassName string) *AppsV1.StatefulSet {
+	accessModes := []CoreV1.PersistentVolumeAccessMode{CoreV1.ReadWriteOnce}
+	storage, _ := resource.ParseQuantity("1Gi")
 	return &AppsV1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -33,6 +35,20 @@ func GenerateStatefulSet(name string, namespace string, replicas int32, selector
 								"sleep",
 								"infinity",
 							},
+						},
+					},
+				},
+			},
+			VolumeClaimTemplates: []CoreV1.PersistentVolumeClaim{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pvc", // kubernetes appends sts name and pod index after given pvc name
+					},
+					Spec: CoreV1.PersistentVolumeClaimSpec{
+						StorageClassName: &storageClassName,
+						AccessModes:      accessModes,
+						Resources: CoreV1.ResourceRequirements{
+							Requests: map[CoreV1.ResourceName]resource.Quantity{CoreV1.ResourceStorage: storage},
 						},
 					},
 				},
