@@ -24,7 +24,7 @@ spec:
  selector:
    matchLabels:
      role: mongo
-     sts-pvc-selector: sts-pvc
+     sts-pvc: "true"
  template:
    metadata:
      labels:
