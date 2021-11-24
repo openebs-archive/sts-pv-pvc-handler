@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/ksraj123/lister-sa/pkg/constants"
 	"github.com/ksraj123/lister-sa/tests/generators"
 	AppsV1 "k8s.io/api/apps/v1"
 	CoreV1 "k8s.io/api/core/v1"
@@ -13,10 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	envtest "sigs.k8s.io/controller-runtime/pkg/envtest"
-)
-
-const (
-	TEST_NAMESPACE = "test"
 )
 
 func startCluster() (*kubernetes.Clientset, *envtest.Environment) {
@@ -41,7 +38,7 @@ func TestListAllStatefulSets(t *testing.T) {
 	defer stopCluster(clusterTestEnv)
 
 	replicas := 1
-	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), TEST_NAMESPACE, int32(replicas), map[string]string{"role": "test"}, "standard")
+	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), constants.TEST_NAMESPACE, int32(replicas), map[string]string{"role": "test"}, "standard")
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -49,7 +46,7 @@ func TestListAllStatefulSets(t *testing.T) {
 	}{
 		"Listing Stateful Sets in a namespace": {
 			initFunc: func(clientset *kubernetes.Clientset) {
-				_, err := clientset.AppsV1().StatefulSets(TEST_NAMESPACE).Create(ctx, statefulset, metav1.CreateOptions{})
+				_, err := clientset.AppsV1().StatefulSets(constants.TEST_NAMESPACE).Create(ctx, statefulset, metav1.CreateOptions{})
 				if err != nil {
 					panic(err.Error())
 				}
@@ -61,7 +58,7 @@ func TestListAllStatefulSets(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.initFunc(clientSet)
-			observedStatefulSets := ListAllStatefulSets(clientSet, ctx, TEST_NAMESPACE)
+			observedStatefulSets := ListAllStatefulSets(clientSet, ctx, constants.TEST_NAMESPACE)
 			expectedStatefulsetFound := false
 			for _, sts := range observedStatefulSets {
 				if sts.Name == test.expected.Name {
@@ -74,12 +71,12 @@ func TestListAllStatefulSets(t *testing.T) {
 			}
 		})
 	}
-	err := clientSet.AppsV1().StatefulSets(TEST_NAMESPACE).Delete(ctx, statefulset.Name, metav1.DeleteOptions{})
+	err := clientSet.AppsV1().StatefulSets(constants.TEST_NAMESPACE).Delete(ctx, statefulset.Name, metav1.DeleteOptions{})
 	if err != nil {
 		panic(err.Error())
 	}
 	for i := 0; i < replicas; i++ {
-		err := clientSet.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
+		err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -91,7 +88,7 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 	clientSet, clusterTestEnv := startCluster()
 	defer stopCluster(clusterTestEnv)
 
-	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), TEST_NAMESPACE, "test-storage-class")
+	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class")
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -99,7 +96,7 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 	}{
 		"Listing Persistent Volume Claims in a namespace": {
 			initFunc: func(clientset *kubernetes.Clientset) {
-				_, err := clientset.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Create(ctx, persistentVolumeClaim, metav1.CreateOptions{})
+				_, err := clientset.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Create(ctx, persistentVolumeClaim, metav1.CreateOptions{})
 				if err != nil {
 					panic(err.Error())
 				}
@@ -111,7 +108,7 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.initFunc(clientSet)
-			observedPVCs := ListAllPersistentVolumeClaims(clientSet, ctx, TEST_NAMESPACE)
+			observedPVCs := ListAllPersistentVolumeClaims(clientSet, ctx, constants.TEST_NAMESPACE)
 			expectedPVCFound := false
 			for _, pvc := range observedPVCs {
 				if pvc.Name == test.expected.Name {
@@ -124,7 +121,7 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 			}
 		})
 	}
-	err := clientSet.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
+	err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
 	if err != nil {
 		panic(err.Error())
 	}
@@ -180,7 +177,7 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 	defer stopCluster(clusterTestEnv)
 
 	storageClass := generators.GenerateStorageClass(fmt.Sprintf("test-sc-%v", rand.Int()), nil, nil, "test-provisioner")
-	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), TEST_NAMESPACE, storageClass.Name)
+	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, storageClass.Name)
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -192,7 +189,7 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 				if err != nil {
 					panic(err.Error())
 				}
-				_, err = clientset.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Create(ctx, persistentVolumeClaim, metav1.CreateOptions{})
+				_, err = clientset.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Create(ctx, persistentVolumeClaim, metav1.CreateOptions{})
 				if err != nil {
 					panic(err.Error())
 				}
@@ -204,7 +201,7 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			test.initFunc(clientSet)
-			observedPVCs := ListPVCsOfStorageClass(clientSet, ctx, TEST_NAMESPACE, []*StorageV1.StorageClass{storageClass})
+			observedPVCs := ListPVCsOfStorageClass(clientSet, ctx, constants.TEST_NAMESPACE, []*StorageV1.StorageClass{storageClass})
 			expectedPVCFound := false
 			t.Logf("%v", observedPVCs)
 			for _, pvc := range observedPVCs {
@@ -218,7 +215,7 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 			}
 		})
 	}
-	err := clientSet.CoreV1().PersistentVolumeClaims(TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
+	err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
 	if err != nil {
 		panic(err.Error())
 	}

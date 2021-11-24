@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ksraj123/lister-sa/pkg/constants"
 	"github.com/ksraj123/lister-sa/pkg/executor"
 	"github.com/ksraj123/lister-sa/pkg/listers"
 	"github.com/ksraj123/lister-sa/pkg/utils"
@@ -17,12 +18,6 @@ import (
 var (
 	clientset *kubernetes.Clientset
 	ctx       context.Context
-)
-
-const (
-	NAMESPACES_ENV_VAR       = "NAMESPACES"
-	PROVISIONERS_ENV_VAR     = "PROVISIONERS"
-	STORAGE_CLASS_ANNOTATION = "openebs.io/delete-dangling-pvc"
 )
 
 func init() {
@@ -38,11 +33,11 @@ func init() {
 }
 
 func main() {
-	namespaces := utils.EnvVarSlice(NAMESPACES_ENV_VAR)
+	namespaces := utils.EnvVarSlice(constants.NAMESPACES_ENV_VAR)
 
 	openEbsStorageClassesMap := make(map[string]*StorageV1.StorageClass)
-	provisioners := utils.EnvVarSlice(PROVISIONERS_ENV_VAR)
-	openEbsStorageClasses := listers.ListProvisionerStorageClassesWithAnnotation(clientset, ctx, provisioners, STORAGE_CLASS_ANNOTATION)
+	provisioners := utils.EnvVarSlice(constants.PROVISIONERS_ENV_VAR)
+	openEbsStorageClasses := listers.ListProvisionerStorageClassesWithAnnotation(clientset, ctx, provisioners, constants.STORAGE_CLASS_ANNOTATION)
 
 	if len(openEbsStorageClasses) == 0 {
 		panic("No Valid Storage Classes Found")
