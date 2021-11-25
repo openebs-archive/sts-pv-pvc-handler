@@ -12,7 +12,7 @@ spec:
  clusterIP: None
  selector:
    role: mongo
-   sts-pvc-selector: sts-pvc
+   sts-pvc: "true"
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -29,11 +29,8 @@ spec:
    metadata:
      labels:
        role: mongo
-       sts-pvc-selector: sts-pvc
+       sts-pvc: "true"
        environment: test
-       #This label will be used by openebs to place in replica
-       # pod anti-affinity to make sure data of different mongo
-       # instances are not co-located on the same node
        openebs.io/replica-anti-affinity: vehicle-db
    spec:
      terminationGracePeriodSeconds: 10

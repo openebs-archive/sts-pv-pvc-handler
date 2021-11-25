@@ -2,6 +2,7 @@ package generators
 
 import (
 	AppsV1 "k8s.io/api/apps/v1"
+	BatchV1 "k8s.io/api/batch/v1"
 	CoreV1 "k8s.io/api/core/v1"
 	StorageV1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -77,13 +78,48 @@ func GeneratePersistentVolumeClaim(name string, namespace string, storageClassNa
 
 func GenerateStorageClass(name string, annotations map[string]string, parameters map[string]string, provisioner string) *StorageV1.StorageClass {
 	var deletePolicy CoreV1.PersistentVolumeReclaimPolicy = "Delete"
+	mode := StorageV1.VolumeBindingWaitForFirstConsumer
 	return &StorageV1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Annotations: annotations,
 		},
-		Parameters:    parameters,
-		Provisioner:   provisioner,
-		ReclaimPolicy: &deletePolicy,
+		Parameters:        parameters,
+		Provisioner:       provisioner,
+		ReclaimPolicy:     &deletePolicy,
+		VolumeBindingMode: &mode,
+	}
+}
+
+func GenerateJob(name string, labels map[string]string, serviceAccountName string, image string, env []CoreV1.EnvVar) *BatchV1.Job {
+	automountServiceAccountToken := true
+	imagePullPolicy := CoreV1.PullIfNotPresent
+	restartPolicy := CoreV1.RestartPolicyNever
+	return &BatchV1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: BatchV1.JobSpec{
+			Template: CoreV1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   name,
+					Labels: labels,
+				},
+				Spec: CoreV1.PodSpec{
+					ServiceAccountName:           serviceAccountName,
+					AutomountServiceAccountToken: &automountServiceAccountToken,
+					Containers: []CoreV1.Container{
+						{
+							Name:            "container",
+							Image:           image,
+							ImagePullPolicy: imagePullPolicy,
+							Env:             env,
+						},
+					},
+					RestartPolicy: restartPolicy,
+				},
+			},
+		},
 	}
 }
