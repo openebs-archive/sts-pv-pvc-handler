@@ -15,6 +15,11 @@ spec:
       automountServiceAccountToken: true
       containers:
       - name: command-demo-container
-        image: lister-sa:0.1
-        imagePullPolicy: Never
+        image: ksraj123/stale-sts-pvc-cleaner:0.1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: PROVISIONERS
+          value: "openebs.io/local"
+        - name: NAMESPACES
+          value: "default"
       restartPolicy: Never
