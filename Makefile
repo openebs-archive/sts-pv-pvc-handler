@@ -8,9 +8,10 @@ endif
 # Requires KUBECONFIG env
 .PHONY: integration-test
 integration-test:
-	@cd tests && go test .
+	@cd tests && go test -v -timeout 60m .
 
 .PHONY: test
 test:
 	@echo "--> Running go test";
-	go test ./pkg/...
+	go test -v -timeout 60m ./pkg/...
+
