@@ -2,8 +2,8 @@ package tests
 
 import (
 	"context"
-	"fmt"
-	"strings"
+	"flag"
+	"os"
 	"testing"
 	"time"
 
@@ -12,30 +12,31 @@ import (
 	CoreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	envtest "sigs.k8s.io/controller-runtime/pkg/envtest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-func startCluster() (*kubernetes.Clientset, *envtest.Environment) {
-	testenv := &envtest.Environment{}
-	cfg, err := testenv.Start()
-	if err != nil {
-		panic(err.Error())
-	}
-	clientset, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		panic(err.Error())
-	}
-	return clientset, testenv
-}
+var (
+	kubeConfigPath                  string
+	openebsNamespace                string
+	clientSet                       *kubernetes.Clientset
+	LocalPVProvisionerLabelSelector = "openebs.io/component-name=openebs-localpv-provisioner"
+)
 
-func stopCluster(testenv *envtest.Environment) {
-	testenv.Stop()
+func init() {
+	flag.StringVar(&kubeConfigPath, "kubeconfig", os.Getenv("KUBECONFIG"), "path to kubeconfig to invoke kubernetes API calls")
+	flag.StringVar(&openebsNamespace, "openebs-namespace", "openebs", "kubernetes namespace where the OpenEBS components are present")
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+	if err != nil {
+		panic(err.Error())
+	}
+	clientSet, err = kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
 }
 
 func TestMain(t *testing.T) {
 	ctx := context.Background()
-	clientSet, clusterTestEnv := startCluster()
-	defer stopCluster(clusterTestEnv)
 
 	// Ensure openebs-localpv-provisioner pod running
 	setup.TestOpenEbsPodRunningState(t, clientSet, ctx, 90)
@@ -75,15 +76,15 @@ func TestMain(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	pvcs, err := clientSet.CoreV1().PersistentVolumeClaims("default").List(ctx, metav1.ListOptions{})
+	setup.TestDanglingPVCDeleted(t, clientSet, ctx, statefulsetName, 90)
+
+	err = clientSet.BatchV1().Jobs("default").Delete(ctx, "test-job", metav1.DeleteOptions{})
 	if err != nil {
-		fmt.Printf("error %s, getting PVCs\n", err.Error())
-	}
-	for _, pvc := range pvcs.Items {
-		if strings.Contains(pvc.Name, statefulsetName) {
-			t.Fatalf("Dangling PVCs %v not deleted by Job", pvc.Name)
-		}
+		panic(err.Error())
 	}
 
-	// clientSet.BatchV1().Jobs("default").Delete(ctx, "test-job", metav1.DeleteOptions{})
+	err = clientSet.StorageV1().StorageClasses().Delete(ctx, "test-storage-class", metav1.DeleteOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
 }
