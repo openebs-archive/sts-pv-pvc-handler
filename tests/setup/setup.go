@@ -2,6 +2,8 @@ package setup
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +47,32 @@ func TestOpenEbsPodRunningState(t *testing.T, clientset *kubernetes.Clientset, c
 	}
 }
 
+func TestDanglingPVCDeleted(t *testing.T, clientset *kubernetes.Clientset, ctx context.Context, statefulsetName string, maxRetry int) {
+	isSuccessful := false
+	var danglingPvcName string
+	for i := 0; i < maxRetry; i++ {
+		pvcs, err := clientset.CoreV1().PersistentVolumeClaims("default").List(ctx, metav1.ListOptions{})
+		if err != nil {
+			fmt.Printf("error %s, getting PVCs\n", err.Error())
+		}
+		count := 0
+		for _, pvc := range pvcs.Items {
+			if strings.Contains(pvc.Name, statefulsetName) {
+				count++
+				danglingPvcName = pvc.Name
+			}
+		}
+		if count == 0 {
+			isSuccessful = true
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+	if !isSuccessful {
+		t.Fatalf("Dangling PVCs %v not deleted by Job", danglingPvcName)
+	}
+}
+
 func CreateStorageClass(t *testing.T, clientset *kubernetes.Clientset, ctx context.Context, maxRetry int) {
 	storageClass := generators.GenerateStorageClass(
 		"test-storage-class",
@@ -68,7 +96,7 @@ func CreateStorageClass(t *testing.T, clientset *kubernetes.Clientset, ctx conte
 }
 
 func CreateStatefulSet(t *testing.T, clientset *kubernetes.Clientset, ctx context.Context, name string, maxRetry int) {
-	statefulset := generators.GenerateStatefulSet(name, "default", 2, map[string]string{"sts-pvc": "true"}, "test-storage-class")
+	statefulset := generators.GenerateStatefulSet(name, "default", 1, map[string]string{"sts-pvc": "true"}, "test-storage-class")
 	_, err := clientset.AppsV1().StatefulSets("default").Create(ctx, statefulset, metav1.CreateOptions{})
 	if err != nil {
 		panic(err.Error())

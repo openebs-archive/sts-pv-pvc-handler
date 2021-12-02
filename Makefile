@@ -5,7 +5,7 @@ ifeq (${KUBECONFIG}, )
   export KUBECONFIG
 endif
 
-# Requires KUBECONFIG env and Ginkgo binary
+# Requires KUBECONFIG env
 .PHONY: integration-test
 integration-test:
-	@cd tests && ginkgo -v
+	@cd tests && go test .
