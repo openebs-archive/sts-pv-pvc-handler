@@ -1,10 +1,6 @@
-FROM golang:1.16-alpine
+FROM ksraj123/sts-stale-pvc-cleaner-base:0.1.0
 
 WORKDIR /app
-
-COPY go.mod ./
-COPY go.sum ./
-RUN go mod download
 
 COPY *.go ./
 COPY pkg ./pkg

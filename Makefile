@@ -9,3 +9,8 @@ endif
 .PHONY: integration-test
 integration-test:
 	@cd tests && go test .
+
+.PHONY: test
+test:
+	@echo "--> Running go test";
+	go test ./pkg/...

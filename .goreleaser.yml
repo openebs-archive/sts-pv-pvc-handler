@@ -16,7 +16,7 @@ dockers:
   - image_templates:
     - 'ksraj123/state-sts-pvc-cleaner-1:latest'
     - 'ksraj123/state-sts-pvc-cleaner-1:{{ .Tag }}'
-    dockerfile: release.Dockerfile
+    dockerfile: Dockerfile.release
   
 archives:
   - replacements:
