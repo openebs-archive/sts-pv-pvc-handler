@@ -56,7 +56,7 @@ func TestMain(t *testing.T) {
 	// now the statefulset PVCs are in dangling state
 
 	serviceAccountName := "openebs-maya-operator"
-	image := "ksraj123/stale-sts-pvc-cleaner:0.1"
+	image := "ksraj123/stale-sts-pvc-cleaner:ci"
 	env := []CoreV1.EnvVar{
 		{
 			Name:  "PROVISIONERS",
