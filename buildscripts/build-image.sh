@@ -31,4 +31,5 @@ echo $CLTNAME
 
 cp ./$binary .
 
-docker build -t ${STALE_STS_PVC_CLEANER_IMAGE_TAG} -f Dockerfile . --no-cache
+echo "Building image - ${STALE_STS_PVC_CLEANER_IMAGE_TAG}"
+docker build -t ${STALE_STS_PVC_CLEANER_IMAGE_TAG} -f Dockerfile.release . --no-cache
