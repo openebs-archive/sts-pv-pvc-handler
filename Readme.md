@@ -8,3 +8,6 @@
 // ToDo: Linting
 // ToDo: Unit tests
 // ToDO: Add comments
+
+XC_OS - OS of binary
+XC_ARCH - architecture of binary

@@ -1,12 +1,11 @@
 before:
   hooks:
     - go mod tidy
-project_name: sts-stale-pvc-cleaner
+project_name: stale-sts-pvc-cleaner
 builds:
   - main: './main.go'
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
@@ -14,8 +13,8 @@ builds:
       - arm64
 dockers:
   - image_templates:
-    - 'ksraj123/state-sts-pvc-cleaner-1:latest'
-    - 'ksraj123/state-sts-pvc-cleaner-1:{{ .Tag }}'
+    - 'ksraj123/state-sts-pvc-cleaner:latest'
+    - 'ksraj123/state-sts-pvc-cleaner:{{ .Tag }}'
     dockerfile: Dockerfile.release
   
 archives:
