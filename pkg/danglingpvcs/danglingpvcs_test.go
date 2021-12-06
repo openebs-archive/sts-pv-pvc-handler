@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/ksraj123/lister-sa/pkg/constants"
 	"github.com/ksraj123/lister-sa/tests/generators"
@@ -38,7 +37,7 @@ func TestGetPVCDanlingStatusMap(t *testing.T) {
 	clientSet, clusterTestEnv := startCluster()
 	defer stopCluster(clusterTestEnv)
 
-	unboundPVC := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-unbound-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class")
+	unboundPVC := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-unbound-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class", nil)
 	statefulsetReplicas := 1
 	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), constants.TEST_NAMESPACE, int32(statefulsetReplicas), map[string]string{"role": "test"}, "standard")
 
@@ -77,62 +76,6 @@ func TestGetPVCDanlingStatusMap(t *testing.T) {
 			}
 			if testFailed {
 				t.Fatalf("Dangling PVCs determined incorrectly, %v", danglingStatusMap)
-			}
-		})
-	}
-
-	err := clientSet.AppsV1().StatefulSets(constants.TEST_NAMESPACE).Delete(ctx, statefulset.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	for i := 0; i < statefulsetReplicas; i++ {
-		err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	err = clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, unboundPVC.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-}
-
-func TestDeleteDanglingPVCs(t *testing.T) {
-	ctx := context.Background()
-	clientSet, clusterTestEnv := startCluster()
-	defer stopCluster(clusterTestEnv)
-
-	pvc := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class")
-	tests := map[string]struct {
-		initFunc func(*kubernetes.Clientset)
-		expected int
-	}{
-		"Testing Deletion of dangling PVCs": {
-			initFunc: func(clientset *kubernetes.Clientset) {
-				_, err := clientset.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Create(ctx, pvc, metav1.CreateOptions{})
-				if err != nil {
-					panic(err.Error())
-				}
-			},
-			expected: 0,
-		},
-	}
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			test.initFunc(clientSet)
-			Delete(clientSet, ctx, constants.TEST_NAMESPACE, map[string]bool{pvc.Name: true})
-
-			time.Sleep(5 * time.Second)
-			persistentvolumeClaims, _ := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).List(ctx, metav1.ListOptions{})
-			count := 0
-			for _, pvcTemp := range persistentvolumeClaims.Items {
-				if pvcTemp.Name == pvc.Name {
-					count++
-				}
-			}
-			if count != test.expected {
-				t.Fatalf("Dangling PVCs could not be deleted successfully, %v", persistentvolumeClaims.Items)
 			}
 		})
 	}

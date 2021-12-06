@@ -32,6 +32,7 @@ func startCluster() (*kubernetes.Clientset, *envtest.Environment) {
 func stopCluster(testenv *envtest.Environment) {
 	testenv.Stop()
 }
+
 func TestListAllStatefulSets(t *testing.T) {
 	ctx := context.Background()
 	clientSet, clusterTestEnv := startCluster()
@@ -71,16 +72,6 @@ func TestListAllStatefulSets(t *testing.T) {
 			}
 		})
 	}
-	err := clientSet.AppsV1().StatefulSets(constants.TEST_NAMESPACE).Delete(ctx, statefulset.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	for i := 0; i < replicas; i++ {
-		err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-	}
 }
 
 func TestListAllPersistentVolumeClaims(t *testing.T) {
@@ -88,7 +79,7 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 	clientSet, clusterTestEnv := startCluster()
 	defer stopCluster(clusterTestEnv)
 
-	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class")
+	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, "test-storage-class", nil)
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -120,10 +111,6 @@ func TestListAllPersistentVolumeClaims(t *testing.T) {
 				t.Fatalf("Expected PVC %v, not found", test.expected)
 			}
 		})
-	}
-	err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
 	}
 }
 
@@ -165,10 +152,6 @@ func TestListAllStorageClasses(t *testing.T) {
 			}
 		})
 	}
-	err := clientSet.StorageV1().StorageClasses().Delete(ctx, storageClass.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
 }
 
 func TestListPVCsOfStorageClass(t *testing.T) {
@@ -177,7 +160,7 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 	defer stopCluster(clusterTestEnv)
 
 	storageClass := generators.GenerateStorageClass(fmt.Sprintf("test-sc-%v", rand.Int()), nil, nil, "test-provisioner")
-	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, storageClass.Name)
+	persistentVolumeClaim := generators.GeneratePersistentVolumeClaim(fmt.Sprintf("test-pvc-%v", rand.Int()), constants.TEST_NAMESPACE, storageClass.Name, nil)
 
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
@@ -214,14 +197,6 @@ func TestListPVCsOfStorageClass(t *testing.T) {
 				t.Fatalf("PVC of Storage Class %v, not found", storageClass)
 			}
 		})
-	}
-	err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, persistentVolumeClaim.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
-	}
-	err = clientSet.StorageV1().StorageClasses().Delete(ctx, storageClass.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
 	}
 }
 
@@ -271,9 +246,5 @@ func TestListProvisionerStorageClassesWithAnnotation(t *testing.T) {
 				t.Fatalf("Expected Storage class with the given provisioner %v, and annotation %v not found", test.expected.provisioner, test.expected.annotation)
 			}
 		})
-	}
-	err := clientSet.StorageV1().StorageClasses().Delete(ctx, storageClass.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
 	}
 }

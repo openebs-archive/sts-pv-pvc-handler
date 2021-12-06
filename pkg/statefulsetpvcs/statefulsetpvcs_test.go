@@ -41,7 +41,11 @@ func TestGetStatefulSetPVCs(t *testing.T) {
 
 	storageClass := generators.GenerateStorageClass(fmt.Sprintf("test-sc-%v", rand.Int()), nil, map[string]string{constants.STS_PVC_SELECTOR: "some-selector-in-sts"}, "test-provisioner")
 	statefulsetReplicas := 1
-	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), constants.TEST_NAMESPACE, int32(statefulsetReplicas), map[string]string{storageClass.Parameters[constants.STS_PVC_SELECTOR]: "true"}, storageClass.Name)
+	statefulsetSelector := map[string]string{storageClass.Parameters[constants.STS_PVC_SELECTOR]: "true"}
+	statefulset := generators.GenerateStatefulSet(fmt.Sprintf("test-sts-%v", rand.Int()), constants.TEST_NAMESPACE, int32(statefulsetReplicas), statefulsetSelector, storageClass.Name)
+	pvcSts := generators.GeneratePersistentVolumeClaim("test-pvc-1", constants.TEST_NAMESPACE, storageClass.Name, statefulsetSelector)
+	pvcOther := generators.GeneratePersistentVolumeClaim("test-pvc-2", constants.TEST_NAMESPACE, storageClass.Name, nil)
+
 	tests := map[string]struct {
 		initFunc func(*kubernetes.Clientset)
 		expected *AppsV1.StatefulSet
@@ -53,6 +57,14 @@ func TestGetStatefulSetPVCs(t *testing.T) {
 					panic(err.Error())
 				}
 				_, err = clientset.AppsV1().StatefulSets(constants.TEST_NAMESPACE).Create(ctx, statefulset, metav1.CreateOptions{})
+				if err != nil {
+					panic(err.Error())
+				}
+				_, err = clientset.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Create(ctx, pvcSts, metav1.CreateOptions{})
+				if err != nil {
+					panic(err.Error())
+				}
+				_, err = clientset.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Create(ctx, pvcOther, metav1.CreateOptions{})
 				if err != nil {
 					panic(err.Error())
 				}
@@ -88,17 +100,5 @@ func TestGetStatefulSetPVCs(t *testing.T) {
 				t.Fatalf("Failed to get statefulset PVCs of statefulset, %v", statefulset)
 			}
 		})
-	}
-
-	// cleaning up resources created for testing
-	for i := 0; i < int(*statefulset.Spec.Replicas); i++ {
-		err := clientSet.CoreV1().PersistentVolumeClaims(constants.TEST_NAMESPACE).Delete(ctx, fmt.Sprintf("pvc-%v-%v", statefulset.Name, i), metav1.DeleteOptions{})
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-	err := clientSet.StorageV1().StorageClasses().Delete(ctx, storageClass.Name, metav1.DeleteOptions{})
-	if err != nil {
-		panic(err.Error())
 	}
 }

@@ -58,13 +58,14 @@ func GenerateStatefulSet(name string, namespace string, replicas int32, selector
 	}
 }
 
-func GeneratePersistentVolumeClaim(name string, namespace string, storageClassName string) *CoreV1.PersistentVolumeClaim {
+func GeneratePersistentVolumeClaim(name string, namespace string, storageClassName string, labels map[string]string) *CoreV1.PersistentVolumeClaim {
 	storage, _ := resource.ParseQuantity("1Gi")
 	accessModes := []CoreV1.PersistentVolumeAccessMode{CoreV1.ReadWriteOnce}
 	return &CoreV1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Labels:    labels,
 		},
 		Spec: CoreV1.PersistentVolumeClaimSpec{
 			StorageClassName: &storageClassName,
