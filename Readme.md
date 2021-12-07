@@ -1,4 +1,4 @@
-# Stale Statefulset Persistent Volume Claims cleaner
+# Stale Statefulset PersistentVolumeClaims cleaner (Experimental)
 
 Kuberenetes allows dynamic creation of persistent volume claims (PVCs) for Statefulsets based volume claim templates. These statefulset PVCs get bound the pods automatically and even after destruction of the pods either by scaling down the statefulset or deleting the statefulset entirely these PVCs stick around which leave them in a 'dangling' state. In the context of persistent identity of pods in a statefulset, this might be beneficial in certain situations as the PVCs would bind to the same pod if the statefulset scaled back up again. However, mostly these dangling PVCs take up resources and need manual intervention to be deleted. This project creates a binary which could be run as a job or a cron job to interact with the Kubernetes API and indentify and delete such dangling PVCs.
 
